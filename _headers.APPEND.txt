@@ -1,6 +1,6 @@
-# --- Append the following to your existing _headers file ---
+# --- FORCE correct MIME for self-hosted esbuild ---
 /pbp/compat/vendor/browser.min.js
-  Content-Type: application/javascript
+  Content-Type: application/javascript; charset=utf-8
   X-Content-Type-Options: nosniff
 
 /pbp/compat/vendor/esbuild.wasm
