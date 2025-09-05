@@ -1,0 +1,6 @@
+{
+  "version": "v0005",
+  "build": "2025-09-05T14:06:37Z",
+  "origin": "v0004 + Orders Probe + Pricing Test + Telemetry",
+  "notes": "Tools: Orders (read-only) + Pricing calculator; Mini telemetry (local-only, console). Docs & links updated."
+}

@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Products Probe · Bridge</title>
+  <style>
+    :root{--glass: rgba(255,255,255,.6);--radius:16px;--shadow:0 8px 40px rgba(0,0,0,.12)}
+    body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial;margin:0;background:linear-gradient(160deg,#eef5ff,#f7fbff)}
+    .wrap{max-width:1200px;margin:28px auto;padding:16px}
+    .card{backdrop-filter: blur(16px);background:var(--glass);border:1px solid rgba(255,255,255,.7);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;margin-bottom:12px}
+    label{display:block;margin:10px 0 4px;font-weight:600}
+    input, select{padding:10px;border-radius:12px;border:1px solid rgba(0,0,0,.08);background:rgba(255,255,255,.85);outline:none}
+    input[type=text]{width:100%}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .row > *{flex:1 1 180px}
+    button{padding:10px 14px;border-radius:12px;border:1px solid rgba(0,0,0,.08);background:#fff;cursor:pointer;font-weight:600}
+    button.primary{background:#4dabff;color:#fff;border:none}
+    table{width:100%;border-collapse:separate;border-spacing:0 8px}
+    th,td{padding:10px;background:#fff;border:1px solid rgba(0,0,0,.06)}
+    th{background:#f6f9ff;text-align:left}
+    tr td:first-child, tr th:first-child{border-top-left-radius:10px;border-bottom-left-radius:10px}
+    tr td:last-child, tr th:last-child{border-top-right-radius:10px;border-bottom-right-radius:10px}
+    img.thumb{width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid rgba(0,0,0,.06)}
+    .muted{color:rgba(0,0,0,.6)}
+    .ok{color:#147a2e;font-weight:700}
+    .bad{color:#c2273d;font-weight:700}
+    .warn{color:#b35b00;font-weight:700}
+    .tag{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid rgba(0,0,0,.1);font-size:12px;background:#fff}
+    textarea{width:100%;min-height:120px;border-radius:12px;border:1px solid rgba(0,0,0,.08);padding:10px;background:rgba(255,255,255,.85)}
+    .right{display:flex;gap:8px;align-items:center;justify-content:flex-end}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h2>Products Probe (Bridge)</h2>
+    <div class="card">
+      <div class="row">
+        <div>
+          <label>Base URL (z Adminu)</label>
+          <input id="base" type="text" placeholder="https://www.cupoftea.cz/wp-json/pbp/v1" readonly>
+        </div>
+        <div>
+          <label>API Key (z Adminu)</label>
+          <input id="key" type="text" placeholder="••••••••" readonly>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <button id="ping" class="primary">Ping</button>
+          <span id="pingStatus" class="muted">–</span>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Filtrovat (název/SKU/cat)</label>
+          <input id="q" type="text" placeholder="např. photobook / A3 / canvas">
+        </div>
+        <div>
+          <label>Počet</label>
+          <select id="limit">
+            <option>20</option><option selected>50</option><option>100</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <button id="load" class="primary">Načíst produkty</button>
+          <button id="exportCsv">Export CSV</button>
+          <button id="exportJson">Export JSON</button>
+        </div>
+      </div>
+      <div class="muted" style="margin-top:8px">
+        Očekávaný Bridge endpoint: <code>GET /products?limit=N&q=...</code>, hlavička <code>X-PBP-API-Key</code>.
+        Fallback: lze přizpůsobit ve skriptu níže, pokud Bridge vrací jiný formát.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="right">
+        <button id="importMap">Import mapování</button>
+        <button id="exportMap">Export mapování</button>
+        <button id="clearMap">Reset mapování</button>
+      </div>
+      <h3>Produkty</h3>
+      <div class="muted">Klikni do pole „Interní SKU“ a ulož lokální mapování. Ukládá se pouze do tohoto prohlížeče.</div>
+      <div id="tableWrap"></div>
+    </div>
+
+    <div class="card">
+      <h3>Debug JSON</h3>
+      <textarea id="debug" spellcheck="false" placeholder="Zde se objeví surová data odpovědi…"></textarea>
+    </div>
+  </div>
+
+<script>
+const K_CFG = "pbp.bridge.config";
+const K_MAP = "pbp.sku.map";
+
+const $ = (s)=>document.querySelector(s);
+const baseEl = $("#base");
+const keyEl  = $("#key");
+const pingBtn = $("#ping");
+const pingStatus = $("#pingStatus");
+const loadBtn = $("#load");
+const qEl = $("#q");
+const limitEl = $("#limit");
+const tableWrap = $("#tableWrap");
+const debugEl = $("#debug");
+
+const exportCsvBtn = $("#exportCsv");
+const exportJsonBtn = $("#exportJson");
+const importMapBtn = $("#importMap");
+const exportMapBtn = $("#exportMap");
+const clearMapBtn  = $("#clearMap");
+
+let lastData = [];
+let skuMap = {};
+
+function loadCfg(){
+  try{
+    const raw = localStorage.getItem(K_CFG);
+    if(!raw) return;
+    const cfg = JSON.parse(raw);
+    baseEl.value = cfg.baseUrl || "";
+    keyEl.value = cfg.apiKey || "";
+  }catch(e){}
+}
+function loadMap(){
+  try{
+    const raw = localStorage.getItem(K_MAP);
+    skuMap = raw ? JSON.parse(raw) : {};
+  }catch(e){ skuMap = {}; }
+}
+function saveMap(){
+  localStorage.setItem(K_MAP, JSON.stringify(skuMap));
+}
+
+function csvEscape(v){
+  if(v==null) return "";
+  const s = String(v);
+  if(/[",\n]/.test(s)) return '"' + s.replace(/"/g,'""') + '"';
+  return s;
+}
+function exportCSV(rows){
+  const head = ["id","name","sku","price","currency","status","categories","image","internal_sku"];
+  const lines = [head.join(",")];
+  for(const r of rows){
+    const arr = [
+      r.id, r.name, r.sku, r.price, r.currency||"", r.status||"",
+      (r.categories||[]).join("|"), r.image||"", r.internal_sku||""
+    ];
+    lines.push(arr.map(csvEscape).join(","));
+  }
+  const blob = new Blob([lines.join("\n")], {type:"text/csv"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "products.csv";
+  a.click();
+}
+
+function exportJSON(rows){
+  const blob = new Blob([JSON.stringify(rows, null, 2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "products.json";
+  a.click();
+}
+
+function rowToView(r){
+  const cats = (r.categories||[]).join(", ");
+  const internal = skuMap[r.id] || "";
+  return `<tr>
+    <td>${r.id}</td>
+    <td><div style="display:flex;gap:10px;align-items:center">
+      ${r.image?`<img class="thumb" src="${r.image}" alt="">`:""}
+      <div><div><strong>${r.name||""}</strong></div><div class="muted">${cats}</div></div>
+    </div></td>
+    <td><span class="tag">${r.sku||""}</span></td>
+    <td>${r.price!=null? r.price : ""} ${r.currency||""}</td>
+    <td>${r.status||""}</td>
+    <td><input data-id="${r.id}" class="mapInput" type="text" placeholder="Interní SKU" value="${internal}"></td>
+  </tr>`;
+}
+
+function renderTable(rows){
+  const head = `<table><thead><tr>
+    <th>ID</th><th>Název</th><th>SKU</th><th>Cena</th><th>Stav</th><th>Interní SKU (lokální)</th>
+  </tr></thead><tbody>`;
+  const body = rows.map(rowToView).join("");
+  const tail = `</tbody></table>`;
+  tableWrap.innerHTML = head + body + tail;
+  document.querySelectorAll(".mapInput").forEach(inp=>{
+    inp.addEventListener("change", e=>{
+      const id = e.target.getAttribute("data-id");
+      skuMap[id] = e.target.value.trim();
+      saveMap();
+    });
+  });
+}
+
+async function ping(){
+  pingStatus.textContent = "…";
+  try{
+    const res = await fetch(baseEl.value.replace(/\/$/,"") + "/ping", {
+      headers: {"X-PBP-API-Key": keyEl.value||""}
+    });
+    const txt = await res.text();
+    pingStatus.innerHTML = res.ok ? "<span class='ok'>OK</span>" : "<span class='bad'>"+res.status+"</span>";
+    debugEl.value = txt;
+  }catch(e){
+    pingStatus.innerHTML = "<span class='bad'>ERR</span>";
+    debugEl.value = String(e);
+  }
+}
+
+async function loadProducts(){
+  let url = baseEl.value.replace(/\/$/,"") + "/products?limit=" + encodeURIComponent(limitEl.value||"50");
+  const qv = (qEl.value||"").trim();
+  if(qv) url += "&q=" + encodeURIComponent(qv);
+  tableWrap.innerHTML = "Načítám…";
+  debugEl.value = "";
+  try{
+    const res = await fetch(url, {
+      headers: {"Content-Type":"application/json","X-PBP-API-Key": keyEl.value||""}
+    });
+    const txt = await res.text();
+    debugEl.value = txt;
+    let data;
+    try{ data = JSON.parse(txt); }catch(e){ data = null; }
+    if(!res.ok){ tableWrap.innerHTML = "<span class='bad'>HTTP "+res.status+"</span>"; return; }
+    if(!data){ tableWrap.innerHTML = "<span class='bad'>Neplatný JSON</span>"; return; }
+
+    // Normalizace — očekáváme pole produktů
+    // Podporované klíče: id,name,sku,price,currency,status,categories[],image
+    const rows = [];
+    const arr = Array.isArray(data) ? data : (Array.isArray(data.items) ? data.items : []);
+    for(const p of arr){
+      const id = p.id ?? p.product_id ?? p.ID ?? p.wp_id ?? null;
+      const name = p.name ?? p.title ?? p.post_title ?? "";
+      const sku = p.sku ?? p.code ?? "";
+      const price = p.price ?? p.regular_price ?? p.amount ?? null;
+      const currency = p.currency ?? p.ccy ?? "";
+      const status = p.status ?? p.post_status ?? "";
+      const categories = p.categories ? (Array.isArray(p.categories)? p.categories : [p.categories]) : (p.category ? [p.category] : []);
+      let image = "";
+      if(p.image) image = (typeof p.image==="string")? p.image : (p.image.src||p.image.url||"");
+      else if(Array.isArray(p.images) && p.images.length) image = p.images[0].src || p.images[0].url || "";
+      rows.push({id,name,sku,price,currency,status,categories,image, internal_sku: (skuMap[id]||"")});
+    }
+    lastData = rows;
+    renderTable(rows);
+  }catch(e){
+    tableWrap.innerHTML = "<span class='bad'>Výjimka při načítání</span>";
+    debugEl.value = String(e);
+  }
+}
+
+exportCsvBtn.addEventListener("click", ()=>exportCSV(lastData));
+exportJsonBtn.addEventListener("click", ()=>exportJSON(lastData));
+importMapBtn.addEventListener("click", ()=>{
+  const txt = prompt("Vlož JSON mapování (object {productId: internalSku})");
+  if(!txt) return;
+  try{ const obj = JSON.parse(txt); skuMap = obj; saveMap(); renderTable(lastData); }catch(e){ alert("Neplatný JSON"); }
+});
+exportMapBtn.addEventListener("click", ()=>{
+  const a = document.createElement('a');
+  const blob = new Blob([JSON.stringify(skuMap,null,2)], {type:"application/json"});
+  a.href = URL.createObjectURL(blob);
+  a.download = "sku-map.json";
+  a.click();
+});
+clearMapBtn.addEventListener("click", ()=>{ if(confirm("Smazat lokální mapování?")){ skuMap={}; saveMap(); renderTable(lastData);} });
+
+pingBtn.addEventListener("click", ping);
+loadBtn.addEventListener("click", loadProducts);
+
+// init
+loadCfg();
+loadMap();
+</script>
+</body>
+</html>

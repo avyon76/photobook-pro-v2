@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Preflight (beta)</title>
+  <style>
+    :root{--glass: rgba(255,255,255,.6);--radius:16px;--shadow:0 8px 40px rgba(0,0,0,.12)}
+    body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial;margin:0;background:linear-gradient(160deg,#eef5ff,#f7fbff)}
+    .wrap{max-width:980px;margin:28px auto;padding:16px}
+    .hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .card{backdrop-filter: blur(16px);background:var(--glass);border:1px solid rgba(255,255,255,.7);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+    .grid{display:grid;grid-template-columns:1fr;gap:12px}
+    label{display:block;margin:10px 0 4px;font-weight:600}
+    input{padding:10px;border-radius:12px;border:1px solid rgba(0,0,0,.08);width:100%;background:rgba(255,255,255,.85);outline:none}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .row > *{flex:1 1 160px}
+    button{padding:10px 14px;border-radius:12px;border:1px solid rgba(0,0,0,.08);background:#fff;cursor:pointer;font-weight:600}
+    .ok{color:#147a2e;font-weight:700}
+    .warn{color:#b35b00;font-weight:700}
+    .bad{color:#c2273d;font-weight:700}
+    .muted{color:rgba(0,0,0,.6)}
+    .result{background:#fff;border:1px solid rgba(0,0,0,.06);border-radius:12px;padding:12px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hdr">
+      <div>
+        <h2 data-i18n="preflight.title">Preflight (beta)</h2>
+        <div class="muted" data-i18n="preflight.desc">Zkontroluj DPI, ořez/bleed a bezpečné okraje před tiskem.</div>
+      </div>
+      <div>
+        <label for="langSel" data-i18n="lang">Jazyk</label>
+        <select id="langSel">
+          <option value="cs">CS</option>
+          <option value="en">EN</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <label data-i18n="preflight.upload">Nahrát obrázek</label>
+        <input type="file" id="file" accept="image/*">
+
+        <div class="row">
+          <div>
+            <label data-i18n="preflight.size">Cílový rozměr (cm)</label>
+            <div class="row">
+              <input type="number" id="wcm" placeholder="Šířka" step="0.1" value="30">
+              <input type="number" id="hcm" placeholder="Výška" step="0.1" value="20">
+            </div>
+          </div>
+          <div>
+            <label data-i18n="preflight.bleed">Spadávka (mm)</label>
+            <input type="number" id="bleed" step="0.1" value="3">
+          </div>
+          <div>
+            <label data-i18n="preflight.safe">Safe margin (mm)</label>
+            <input type="number" id="safe" step="0.1" value="5">
+          </div>
+          <div>
+            <label data-i18n="preflight.dpiTarget">Doporučené DPI</label>
+            <input type="number" id="dpiTarget" step="1" value="300">
+          </div>
+        </div>
+
+        <div style="margin-top:10px">
+          <button id="analyzeBtn" data-i18n="preflight.analyze">Analyzovat</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 data-i18n="preflight.result">Výsledky</h3>
+        <div id="results" class="result muted">–</div>
+        <h3 data-i18n="preflight.warnings">Varování</h3>
+        <div id="warnings" class="result">–</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/pbp/tools/i18n.js"></script>
+  <script>
+    const sel = document.getElementById('langSel'); sel.addEventListener('change', e=>PBPI18N.set(e.target.value));
+
+    const file = document.getElementById('file');
+    const wcm = document.getElementById('wcm');
+    const hcm = document.getElementById('hcm');
+    const bleed = document.getElementById('bleed');
+    const safe = document.getElementById('safe');
+    const dpiTarget = document.getElementById('dpiTarget');
+    const btn = document.getElementById('analyzeBtn');
+    const results = document.getElementById('results');
+    const warningsEl = document.getElementById('warnings');
+    let img = null;
+
+    file.addEventListener('change', async (e)=>{
+      const f = e.target.files[0]; if(!f) return;
+      img = new Image();
+      img.src = URL.createObjectURL(f);
+      await new Promise(res=>{ img.onload = res; });
+    });
+
+    function cmToIn(cm){ return cm / 2.54; }
+    function mmToIn(mm){ return mm / 25.4; }
+
+    btn.addEventListener('click', ()=>{
+      if(!img){ warningsEl.innerHTML = "<span class='bad'>Nahraj nejprve obrázek.</span>"; return; }
+      const pxW = img.naturalWidth, pxH = img.naturalHeight;
+
+      const bleedIn = mmToIn(parseFloat(bleed.value || "0"));
+      const safeIn  = mmToIn(parseFloat(safe.value || "0"));
+      const wIn = cmToIn(parseFloat(wcm.value || "0"));
+      const hIn = cmToIn(parseFloat(hcm.value || "0"));
+      const wTotal = wIn + 2*bleedIn;
+      const hTotal = hIn + 2*bleedIn;
+
+      const dpiX = pxW / wTotal;
+      const dpiY = pxH / hTotal;
+      const dpiMin = Math.min(dpiX, dpiY);
+      const target = parseFloat(dpiTarget.value||"300");
+
+      const needPxW = Math.round(wTotal * target);
+      const needPxH = Math.round(hTotal * target);
+
+      const safePx = Math.round(safeIn * target);
+
+      let warn = [];
+      if(dpiMin < target){
+        if(dpiMin < 150) warn.push("Velmi nízké DPI (<150). Zvaž menší formát nebo kvalitnější zdroj.");
+        else warn.push("DPI pod doporučením. Může být patrná neostrost.");
+      }
+      // Aspect ratio check (allow ±2%)
+      const outRatio = wTotal / hTotal;
+      const inRatio = pxW / pxH;
+      if(Math.abs(outRatio - inRatio) / outRatio > 0.02){
+        warn.push("Poměr stran zdroje neodpovídá cílovému formátu se spadávkou. Dojde k ořezu.");
+      }
+
+      results.innerHTML = [
+        `Zdroj: ${pxW}×${pxH} px`,
+        `Cíl (vč. spadávky): ${wTotal.toFixed(2)}″ × ${hTotal.toFixed(2)}″`,
+        `DPI eff: X=${dpiX.toFixed(0)} · Y=${dpiY.toFixed(0)} · min=${dpiMin.toFixed(0)}`,
+        `Pro ${target} DPI doporučeno: ${needPxW}×${needPxH} px`,
+        `Safe margin: ${safePx}px od okrajů výstupu`
+      ].join("\n");
+
+      warningsEl.innerHTML = warn.length ? ("• " + warn.join("\n• ")) : "<span class='ok'>Vše v pořádku.</span>";
+    });
+  </script>
+</body>
+</html>

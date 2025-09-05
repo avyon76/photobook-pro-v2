@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Orders Probe · Bridge</title>
+  <style>
+    :root{--glass: rgba(255,255,255,.6);--radius:16px;--shadow:0 8px 40px rgba(0,0,0,.12)}
+    body{font-family:-apple-system,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial;margin:0;background:linear-gradient(160deg,#eef5ff,#f7fbff)}
+    .wrap{max-width:1200px;margin:28px auto;padding:16px}
+    .card{backdrop-filter: blur(16px);background:var(--glass);border:1px solid rgba(255,255,255,.7);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;margin-bottom:12px}
+    label{display:block;margin:10px 0 4px;font-weight:600}
+    input, select{padding:10px;border-radius:12px;border:1px solid rgba(0,0,0,.08);background:rgba(255,255,255,.85);outline:none}
+    input[type=text], input[type=date]{width:100%}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+    .row > *{flex:1 1 180px}
+    button{padding:10px 14px;border-radius:12px;border:1px solid rgba(0,0,0,.08);background:#fff;cursor:pointer;font-weight:600}
+    button.primary{background:#4dabff;color:#fff;border:none}
+    table{width:100%;border-collapse:separate;border-spacing:0 8px}
+    th,td{padding:10px;background:#fff;border:1px solid rgba(0,0,0,.06);vertical-align:top}
+    th{background:#f6f9ff;text-align:left}
+    tr td:first-child, tr th:first-child{border-top-left-radius:10px;border-bottom-left-radius:10px}
+    tr td:last-child, tr th:last-child{border-top-right-radius:10px;border-bottom-right-radius:10px}
+    .muted{color:rgba(0,0,0,.6)}
+    .ok{color:#147a2e;font-weight:700}
+    .bad{color:#c2273d;font-weight:700}
+    textarea{width:100%;min-height:120px;border-radius:12px;border:1px solid rgba(0,0,0,.08);padding:10px;background:rgba(255,255,255,.85)}
+    details summary{cursor:pointer;font-weight:600}
+    .right{display:flex;gap:8px;align-items:center;justify-content:flex-end}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h2>Orders Probe (Bridge)</h2>
+    <div class="card">
+      <div class="row">
+        <div>
+          <label>Base URL</label>
+          <input id="base" type="text" placeholder="https://www.cupoftea.cz/wp-json/pbp/v1" readonly>
+        </div>
+        <div>
+          <label>API Key</label>
+          <input id="key" type="text" placeholder="••••••••" readonly>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <button id="ping" class="primary">Ping</button>
+          <span id="pingStatus" class="muted">–</span>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Stav</label>
+          <select id="status">
+            <option value="">(vše)</option>
+            <option>pending</option>
+            <option>processing</option>
+            <option>completed</option>
+            <option>cancelled</option>
+            <option>refunded</option>
+            <option>on-hold</option>
+          </select>
+        </div>
+        <div>
+          <label>Od data</label>
+          <input id="from" type="date">
+        </div>
+        <div>
+          <label>Do data</label>
+          <input id="to" type="date">
+        </div>
+        <div>
+          <label>Počet</label>
+          <select id="limit">
+            <option>20</option><option selected>50</option><option>100</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <button id="load" class="primary">Načíst objednávky</button>
+          <button id="exportCsv">Export CSV</button>
+          <button id="exportJson">Export JSON</button>
+        </div>
+      </div>
+      <div class="muted" style="margin-top:8px">
+        Očekávaný Bridge endpoint: <code>GET /orders?limit=&status=&from=&to=</code>. 
+        Hlavička: <code>X-PBP-API-Key</code>. CORS: povol <code>studio.cupoftea.cz</code>.
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Přehled</h3>
+      <div id="tableWrap">–</div>
+    </div>
+
+    <div class="card">
+      <h3>Debug JSON</h3>
+      <textarea id="debug" spellcheck="false" placeholder="Zde se objeví surová data odpovědi…"></textarea>
+    </div>
+  </div>
+
+<script src="/pbp/tools/telemetry.js"></script>
+<script>
+const K_CFG = "pbp.bridge.config";
+const $ = (s)=>document.querySelector(s);
+const baseEl = $("#base"), keyEl=$("#key"), pingBtn=$("#ping"), pingStatus=$("#pingStatus");
+const statusEl = $("#status"), fromEl=$("#from"), toEl=$("#to"), limitEl=$("#limit");
+const loadBtn=$("#load"), debugEl=$("#debug"), tableWrap=$("#tableWrap");
+const exportCsvBtn = $("#exportCsv"), exportJsonBtn=$("#exportJson");
+
+let lastData = [];
+
+function loadCfg(){
+  try{
+    const raw = localStorage.getItem(K_CFG);
+    if(!raw) return;
+    const cfg = JSON.parse(raw);
+    baseEl.value = cfg.baseUrl||""; keyEl.value = cfg.apiKey||"";
+  }catch(e){}
+}
+function csvEscape(v){
+  if(v==null) return "";
+  const s = String(v);
+  if(/[",\n]/.test(s)) return '"' + s.replace(/"/g,'""') + '"';
+  return s;
+}
+function exportCSV(rows){
+  const head = ["id","number","date","status","total","currency","email","name","items","payment","shipping"];
+  const lines = [head.join(",")];
+  for(const r of rows){
+    const arr = [r.id,r.number,r.date,r.status,r.total,r.currency,r.email,r.name,r.items_count,r.payment_method,r.shipping_method];
+    lines.push(arr.map(csvEscape).join(","));
+  }
+  const blob = new Blob([lines.join("\n")], {type:"text/csv"});
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download="orders.csv"; a.click();
+}
+function exportJSON(rows){
+  const blob = new Blob([JSON.stringify(rows,null,2)], {type:"application/json"});
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download="orders.json"; a.click();
+}
+
+function renderTable(rows){
+  const head = `<table><thead><tr>
+    <th>ID</th><th>Číslo</th><th>Datum</th><th>Stav</th><th>Celkem</th><th>Zákazník</th><th>Položky</th><th>Platba</th><th>Doprava</th>
+  </tr></thead><tbody>`;
+  const body = rows.map(r=>{
+    const items = (r.items||[]).map(it=>`${it.qty}× ${it.name} (${it.sku||""})`).join("<br>");
+    return `<tr>
+      <td>${r.id}</td>
+      <td>${r.number||""}</td>
+      <td>${r.date||""}</td>
+      <td>${r.status||""}</td>
+      <td>${r.total!=null? (r.total+" "+(r.currency||"")):""}</td>
+      <td>${r.name||""}<div class="muted">${r.email||""}</div></td>
+      <td>${items||""}</td>
+      <td>${r.payment_method||""}</td>
+      <td>${r.shipping_method||""}</td>
+    </tr>`;
+  }).join("");
+  const tail = `</tbody></table>`;
+  tableWrap.innerHTML = head+body+tail;
+}
+
+async function ping(){
+  PBPT.log("orders_ping_click");
+  pingStatus.textContent = "…";
+  try{
+    const res = await fetch(baseEl.value.replace(/\/$/,"") + "/ping", { headers: {"X-PBP-API-Key": keyEl.value||""}});
+    const txt = await res.text();
+    pingStatus.innerHTML = res.ok ? "<span class='ok'>OK</span>" : "<span class='bad'>"+res.status+"</span>";
+    debugEl.value = txt;
+  }catch(e){
+    pingStatus.innerHTML = "<span class='bad'>ERR</span>";
+    debugEl.value = String(e);
+  }
+}
+
+async function loadOrders(){
+  PBPT.log("orders_load_click", {status: statusEl.value, from: fromEl.value, to: toEl.value});
+  tableWrap.textContent = "Načítám…";
+  let url = baseEl.value.replace(/\/$/,"") + "/orders?limit=" + encodeURIComponent(limitEl.value||"50");
+  if(statusEl.value) url += "&status=" + encodeURIComponent(statusEl.value);
+  if(fromEl.value)   url += "&from=" + encodeURIComponent(fromEl.value);
+  if(toEl.value)     url += "&to=" + encodeURIComponent(toEl.value);
+  try{
+    const res = await fetch(url, { headers: {"Content-Type":"application/json","X-PBP-API-Key": keyEl.value||""}});
+    const txt = await res.text();
+    debugEl.value = txt;
+    if(!res.ok){ tableWrap.innerHTML = "<span class='bad'>HTTP "+res.status+"</span>"; return; }
+    let data; try{ data = JSON.parse(txt); }catch(e){ tableWrap.innerHTML = "<span class='bad'>Neplatný JSON</span>"; return; }
+    const arr = Array.isArray(data) ? data : (Array.isArray(data.items) ? data.items : []);
+    const rows = [];
+    for(const o of arr){
+      const id = o.id ?? o.order_id ?? o.ID ?? null;
+      const number = o.number ?? o.order_number ?? String(id||"");
+      const date = o.date ?? o.date_created ?? o.order_date ?? "";
+      const status = o.status ?? o.post_status ?? "";
+      const total = o.total ?? o.total_amount ?? o.order_total ?? null;
+      const currency = o.currency ?? o.ccy ?? "";
+      const email = (o.billing && (o.billing.email || o.billing_email)) || o.email || "";
+      const name = (o.billing && ((o.billing.first_name||"")+" "+(o.billing.last_name||"")).trim()) || o.customer_name || "";
+      const items = Array.isArray(o.line_items) ? o.line_items :
+                    Array.isArray(o.items) ? o.items : [];
+      const mappedItems = items.map(it=>({ name: it.name||"", sku: it.sku||"", qty: it.quantity||it.qty||1 }));
+      const payment = o.payment_method_title || o.payment_method || "";
+      const shipping = (Array.isArray(o.shipping_lines) && o.shipping_lines[0] && (o.shipping_lines[0].method_title||o.shipping_lines[0].method_id)) || o.shipping_method || "";
+      rows.push({id, number, date, status, total, currency, email, name, items_count: mappedItems.length, items: mappedItems, payment_method: payment, shipping_method: shipping});
+    }
+    lastData = rows;
+    renderTable(rows);
+  }catch(e){
+    tableWrap.innerHTML = "<span class='bad'>Výjimka při načítání</span>"; debugEl.value = String(e);
+  }
+}
+
+exportCsvBtn.addEventListener("click", ()=>{ PBPT.log("orders_export_csv"); exportCSV(lastData); });
+exportJsonBtn.addEventListener("click", ()=>{ PBPT.log("orders_export_json"); exportJSON(lastData); });
+
+pingBtn.addEventListener("click", ping);
+loadBtn.addEventListener("click", loadOrders);
+
+// init
+loadCfg();
+PBPT.log("orders_probe_open");
+</script>
+</body>
+</html>
