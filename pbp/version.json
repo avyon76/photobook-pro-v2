@@ -1,6 +1,6 @@
 {
-  "version": "v0006",
-  "build": "2025-09-05T14:54:59Z",
+  "version": "v0006b",
+  "build": "2025-09-05T15:15:18Z",
   "origin": "Lovable export + Tools + TSX bootloader",
-  "notes": "Static + runtime TSX support"
+  "notes": "Hotfix: TSX loader with multi-CDN fallbacks (jsdelivr/unpkg/jspm) and no-store fetch."
 }
