@@ -1,11 +1,10 @@
 
-// PBP TSX Loader — v0006n
-// Stronger resolver for esm.sh:
-//  - Any absolute path starting with /v<digits>/ or /dev/ goes to https://esm.sh
-//  - Any absolute path starting with /react@ or /react-dom@ goes to https://esm.sh
-//  - Bare specifiers -> https://esm.sh/<spec>
-//  - Keep local assets only under /src or /pbp or with a real file extension
-//  - Treat .js and .mjs as JSX (some CDN outputs)
+// PBP TSX Loader — v0006o
+// Combines both strategies:
+// 1) If importer is from esm.sh and the import path is absolute ("/…"), keep it on esm.sh.
+// 2) Force-route known esm.sh absolute patterns (/v###/, /dev/, /react@…, /react-dom@…) to esm.sh.
+// 3) Local files only under /src or /pbp or with a real extension; all else -> esm.sh.
+// 4) Treat .js/.mjs as JSX.
 (async function(){
   try {
     const entry = "/src/main.tsx";
@@ -34,6 +33,7 @@
       const clean = p.split("?")[0].split("#")[0];
       return /\.[a-z0-9]+$/i.test(clean);
     };
+    const isEsm = (s) => /^https?:\/\/esm\.sh\//i.test(s || "");
     const toEsm = (p) => "https://esm.sh/" + p.replace(/^\/+/, "");
 
     const fetchPlugin = {
@@ -41,18 +41,23 @@
       setup(build) {
         build.onResolve({ filter: /.*/ }, (args) => {
           const p = args.path;
+          const importer = args.importer || "";
           if (/^https?:\/\//i.test(p)) return { path: p, namespace: "http-url" };
 
           if (p.startsWith("/")) {
-            // Force-route known esm.sh absolute patterns
+            // If the importer itself came from esm.sh, keep absolute paths on esm.sh (covers /scheduleChunk..., etc.).
+            if (isEsm(importer)) {
+              return { path: "https://esm.sh" + p, namespace: "http-url" };
+            }
+            // Force-route known esm.sh path styles.
             if (/^\/(v\d+|dev)\//i.test(p) || /^\/react(?:-dom)?@/i.test(p)) {
               return { path: toEsm(p), namespace: "http-url" };
             }
-            // Local files only under /src or /pbp or with extension
+            // Local file?
             if (isLocalAsset(p)) {
               return { path: new URL(p, location.origin).toString(), namespace: "http-url" };
             }
-            // Everything else -> esm.sh
+            // Otherwise -> esm.sh
             return { path: toEsm(p), namespace: "http-url" };
           }
 
@@ -75,7 +80,7 @@
           if (ext === "tsx") loader = "tsx";
           else if (ext === "ts") loader = "ts";
           else if (ext === "jsx") loader = "jsx";
-          else if (ext === "mjs" || ext === "js") loader = "jsx"; // important
+          else if (ext === "mjs" || ext === "js") loader = "jsx";
           else if (ext === "css") loader = "css";
           else if (["png","jpg","jpeg","gif","webp","svg"].includes(ext)) loader = "dataurl";
           return { contents: t, loader };
@@ -104,12 +109,12 @@
     const url  = URL.createObjectURL(blob);
     await import(url);
     URL.revokeObjectURL(url);
-    console.info("[PBP] TSX boot OK (v0006n)");
+    console.info("[PBP] TSX boot OK (v0006o)");
   } catch (e) {
-    console.error("[PBP] TSX boot failed (v0006n)", e);
+    console.error("[PBP] TSX boot failed (v0006o)", e);
     const el = document.createElement("div");
     el.style.cssText = "position:fixed;inset:12px auto auto 12px;background:#fff;border:1px solid #f00;padding:10px;border-radius:8px;z-index:2147483647;font:12px/1.4 -apple-system,Segoe UI,Roboto";
-    el.innerHTML = "TSX loader error.<br>See console for errors (v0006n).";
+    el.innerHTML = "TSX loader error.<br>See console for errors (v0006o).";
     document.body.appendChild(el);
   }
 })();
