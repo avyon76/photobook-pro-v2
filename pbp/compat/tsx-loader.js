@@ -1,15 +1,15 @@
 
-// PBP TSX Loader — v0006k
-// Fix: imports like "/react@18", "/react-dom@18", etc. were treated as local paths.
-// Now we redirect ANY leading-slash bare specifier (that isn't a local file) to esm.sh.
-// Also keep JSX handling for .js/.mjs.
+// PBP TSX Loader — v0006m
+// Fix: absolute imports produced by esm.sh (e.g. "/react@18/client.jsx?is=18")
+// were resolved to our origin. If the importer comes from esm.sh, keep them on esm.sh.
+// Still treat .js/.mjs as JSX.
 (async function(){
   try {
     const entry = "/src/main.tsx";
     const vendorJS = "/pbp/compat/vendor/browser.min.js";
     const wasmURL  = "/pbp/compat/vendor/esbuild.wasm";
 
-    // --- fetch vendor & load (ESM via blob import -> fallback eval) ---
+    // --- vendor load (ESM via blob import -> fallback eval) ---
     const vendResp = await fetch(vendorJS, { cache: "no-store" });
     const vendText = await vendResp.text();
     if (!vendResp.ok) throw new Error("vendor HTTP " + vendResp.status);
@@ -30,27 +30,33 @@
     await self.esbuild.initialize({ wasmURL });
 
     const isLocalAsset = (p) => {
-      // treat anything under /src or /pbp as local
       if (p.startsWith("/src/") || p.startsWith("/pbp/")) return true;
-      // if it has a file extension, consider it a real file path
       const clean = p.split("?")[0].split("#")[0];
       return /\.[a-z0-9]+$/i.test(clean);
     };
+    const isEsm = (s) => /^https?:\/\/esm\.sh\//i.test(s || "");
 
     const fetchPlugin = {
       name: "fetch-plugin",
       setup(build) {
         build.onResolve({ filter: /.*/ }, (args) => {
           const p = args.path;
+          const importer = args.importer || "";
           if (/^https?:\/\//i.test(p)) return { path: p, namespace: "http-url" };
 
           if (p.startsWith("/")) {
-            // Absolute path on same origin. If it doesn't look like a local file, treat as bare to esm.sh
+            // If module that imports this path comes from esm.sh, keep absolute paths on esm.sh.
+            if (isEsm(importer)) {
+              // preserve absolute path on esm.sh domain
+              const url = "https://esm.sh" + p;
+              return { path: url, namespace: "http-url" };
+            }
+            // Otherwise: if not local asset => route as bare to esm.sh (handles /react@..., /v133/...)
             if (!isLocalAsset(p)) {
-              const spec = p.replace(/^\/+/, ""); // strip leading slashes
+              const spec = p.replace(/^\/+/, "");
               return { path: "https://esm.sh/" + spec, namespace: "http-url" };
             }
-            // real local file
+            // real local file on our origin
             return { path: new URL(p, location.origin).toString(), namespace: "http-url" };
           }
 
@@ -73,7 +79,7 @@
           if (ext === "tsx") loader = "tsx";
           else if (ext === "ts") loader = "ts";
           else if (ext === "jsx") loader = "jsx";
-          else if (ext === "mjs" || ext === "js") loader = "jsx"; // handle JSX-in-JS/MJS
+          else if (ext === "mjs" || ext === "js") loader = "jsx";
           else if (ext === "css") loader = "css";
           else if (["png","jpg","jpeg","gif","webp","svg"].includes(ext)) loader = "dataurl";
           return { contents: t, loader };
@@ -101,12 +107,12 @@
     const url  = URL.createObjectURL(blob);
     await import(url);
     URL.revokeObjectURL(url);
-    console.info("[PBP] TSX boot OK (v0006k)");
+    console.info("[PBP] TSX boot OK (v0006m)");
   } catch (e) {
-    console.error("[PBP] TSX boot failed (v0006k)", e);
+    console.error("[PBP] TSX boot failed (v0006m)", e);
     const el = document.createElement("div");
     el.style.cssText = "position:fixed;inset:12px auto auto 12px;background:#fff;border:1px solid #f00;padding:10px;border-radius:8px;z-index:2147483647;font:12px/1.4 -apple-system,Segoe UI,Roboto";
-    el.innerHTML = "TSX loader error.<br>See console for errors (v0006k).";
+    el.innerHTML = "TSX loader error.<br>See console for errors (v0006m).";
     document.body.appendChild(el);
   }
 })();
