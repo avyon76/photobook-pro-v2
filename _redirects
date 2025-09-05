@@ -1,9 +1,2 @@
-# Serve vendor assets as-is (prevent SPA fallback)
-/pbp/compat/vendor/*    /pbp/compat/vendor/:splat   200!
-
-# (optional if you might place files under lib/ or esm/ subfolders)
-/pbp/compat/vendor/lib/*  /pbp/compat/vendor/lib/:splat   200!
-/pbp/compat/vendor/esm/*  /pbp/compat/vendor/esm/:splat   200!
-
-# SPA fallback for the rest
-/*   /index.html   200
+/pbp/compat/vendor/* /pbp/compat/vendor/:splat 200!
+/* /index.html 200

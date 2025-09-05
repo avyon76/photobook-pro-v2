@@ -1,10 +1,3 @@
-/*
-# Security & defaults (optional)
-  X-Frame-Options: SAMEORIGIN
-  Referrer-Policy: strict-origin-when-cross-origin
-  X-XSS-Protection: 1; mode=block
-
-# --- Vendor JS/WASM must have correct MIME and bypass caches ---
 /pbp/compat/vendor/*.js
   Content-Type: application/javascript; charset=utf-8
   Cache-Control: no-store
