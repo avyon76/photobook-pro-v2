@@ -1,21 +1,17 @@
-// PBP TSX Loader — v0006f (robust ESM/UMD self-host)
+// PBP TSX Loader — v0006g (MIME-agnostic self-host; fetch+eval)
 (async function(){
   try {
     const entry = "/src/main.tsx";
     const resp = await fetch(entry, { cache: "no-store" });
     if (!resp.ok) return; // no TSX → skip
 
-    async function injectClassic(src){
-      await new Promise((resolve,reject)=>{
-        const s=document.createElement("script");
-        s.src=src; s.async=true; s.crossOrigin="anonymous";
-        s.onload=resolve; s.onerror=()=>reject(new Error("Failed to load "+src));
-        document.head.appendChild(s);
-      });
+    async function fetchText(url){
+      const r = await fetch(url, { cache: "no-store" });
+      if(!r.ok) throw new Error("HTTP "+r.status+" for "+url);
+      return await r.text();
     }
 
-    async function loadEsbuild(){
-      // Try as ESM first (works if file is module). Then fallback to classic global.
+    async function loadEsbuildViaFetchEval(){
       const candidates = [
         "/pbp/compat/vendor/browser.min.js",
         "/pbp/compat/vendor/browser.js",
@@ -23,28 +19,28 @@
         "/pbp/compat/vendor/esm/browser.min.js"
       ];
       let lastErr = null;
-      for (const p of candidates){
-        // 1) ESM dynamic import
-        try {
-          const m = await import(p);
-          const api = m && (m.default?.initialize ? m.default : m);
+      for(const u of candidates){
+        try{
+          const code = await fetchText(u);
+          // quick guard: if looks like HTML (SPA fallback), try next
+          const head = code.slice(0, 32).toLowerCase();
+          if (head.includes("<!doctype") || head.startsWith("<html")) continue;
+
+          // Evaluate as classic script to populate window.esbuild (UMD build)
+          const fn = new Function("window", code + "\n;return window.esbuild;");
+          const api = fn(window);
           if (api && api.initialize) {
             window.esbuild = api;
-            return p + " (ESM)";
+            return u + " (eval)";
           }
-        } catch(e){ lastErr = e; }
-
-        // 2) Classic <script> (UMD)
-        try {
-          await injectClassic(p);
-          if (window.esbuild && window.esbuild.initialize) return p + " (UMD)";
-        } catch(e){ lastErr = e; }
+        }catch(e){ lastErr = e; }
       }
-      throw lastErr || new Error("esbuild artifact not found");
+      throw lastErr || new Error("esbuild vendor JS not found/valid");
     }
 
-    const source = await loadEsbuild();
+    const source = await loadEsbuildViaFetchEval();
 
+    // Build WASM URL (self-hosted). Even if MIME isn't application/wasm, fetch inside esbuild will still load it.
     await window.esbuild.initialize({ wasmURL: "/pbp/compat/vendor/esbuild.wasm" });
 
     const fetchPlugin = {
@@ -91,7 +87,7 @@
     URL.revokeObjectURL(url);
     console.info("[PBP] TSX boot OK — esbuild:", source);
   } catch(e){
-    console.error("[PBP] TSX boot failed (v0006f)", e);
+    console.error("[PBP] TSX boot failed (v0006g)", e);
     const el = document.createElement("div");
     el.style.cssText = "position:fixed;inset:12px auto auto 12px;background:#fff;border:1px solid #f00;padding:10px;border-radius:8px;z-index:2147483647;font:12px/1.4 -apple-system,Segoe UI,Roboto";
     el.innerHTML = "TSX loader error.<br>Check vendor files and redirects/headers. See console for details.";
