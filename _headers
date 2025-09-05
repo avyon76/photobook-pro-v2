@@ -4,3 +4,12 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   X-XSS-Protection: 1; mode=block
+
+# --- FORCE correct MIME for self-hosted esbuild ---
+/pbp/compat/vendor/browser.min.js
+  Content-Type: application/javascript; charset=utf-8
+  X-Content-Type-Options: nosniff
+
+/pbp/compat/vendor/esbuild.wasm
+  Content-Type: application/wasm
+  X-Content-Type-Options: nosniff
