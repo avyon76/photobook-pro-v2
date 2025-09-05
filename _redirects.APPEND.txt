@@ -1,0 +1,3 @@
+/pbp/compat/vendor/*                /pbp/compat/vendor/:splat 200!
+/pbp/compat/vendor/lib/*            /pbp/compat/vendor/lib/:splat 200!
+/pbp/compat/vendor/esm/*            /pbp/compat/vendor/esm/:splat 200!
