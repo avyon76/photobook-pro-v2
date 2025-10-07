@@ -1,2 +1,1 @@
-PhotobookPro MASTER BRIEF v0_1 → v88_0
-(Placeholder – doplňte aktuální verzi „Bible“; tento soubor je zde kvůli konzistenci release balíku.)
+PhotobookPro MASTER BRIEF (placeholder) – doplňte aktuální verzi.
