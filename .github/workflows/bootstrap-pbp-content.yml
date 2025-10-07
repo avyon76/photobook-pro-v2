@@ -17,67 +17,46 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           mk() { f="$1"; shift; mkdir -p "$(dirname "$f")"; printf '%s\n' "$@" > "$f"; }
 
           # Products
           mk content/products/prints.md \
-            '# Foto tisky (malý formát)' \
-            '' \
+            '# Foto tisky (malý formát)' '' \
             'Formáty: 9×13, 10×15, 13×18, 15×21, A4.' \
             'Spad 3 mm, bezpečná zóna 5 mm, 300 dpi, sRGB.' \
             'Okraje: bez okraje / bílý rámeček. Výroba: 1–2 dny.'
-
           mk content/products/large-format.md \
-            '# Velkoformát (LF)' \
-            '' \
+            '# Velkoformát (LF)' '' \
             'Plakáty, fine-art, desky (PVC/Kapa/Dibond), akryl, rámování.' \
             'Spad 5–10 mm, 180–240 dpi, sRGB. Max šíře ~320 cm.'
-
           mk content/products/photobooks.md \
-            '# Fotoknihy (Basic / Pro / LayFlat)' \
-            '' \
+            '# Fotoknihy (Basic / Pro / LayFlat)' '' \
             'AI výběr fotek, inteligentní layouty, preflight.' \
             '3 mm spad, 5 mm bezpečná zóna. Výroba 3–7 dnů.'
-
           mk content/products/calendars.md \
-            '# Kalendáře' \
-            '' \
-            'A3 na výšku, 13 listů, kroužková vazba s háčkem.' \
-            'Spad 3 mm, text ≥ 8 pt.'
-
+            '# Kalendáře' '' \
+            'A3 na výšku, 13 listů, kroužková vazba s háčkem. Spad 3 mm, text ≥ 8 pt.'
           mk content/products/magnets.md \
-            '# Foto magnety' \
-            '' \
-            'Formáty 5×5 až 10×15, sety 3×1 / 2×2 / 4×1.' \
-            'Spad 2–3 mm, sRGB 300 dpi. Dárkové balení volitelně.'
-
+            '# Foto magnety' '' \
+            'Formáty 5×5 až 10×15, sety 3×1 / 2×2 / 4×1. Spad 2–3 mm, sRGB 300 dpi.'
           mk content/products/frames.md \
-            '# Rámy & pasparty' \
-            '' \
+            '# Rámy & pasparty' '' \
             'Rámy dřevo/hliník, AR sklo/plexi. Pasparty 1.4–2.0 mm.' \
             'Doporučený spad 5–10 mm. Ceny placeholder – doplníme.'
 
           # Pages
           mk content/pages/home.md \
-            '# Photobook Pro' \
-            '' \
+            '# Photobook Pro' '' \
             'Tisk fotoknih, kalendářů, tisků, magnetů a LF. Konfigurátor brzy.' \
             'Rychlá výroba • Preflight kontrola • Dárkové balení'
-
           mk content/pages/pricing.md \
-            '# Ceník a promo akce' \
-            '' \
+            '# Ceník a promo akce' '' \
             'BOGO, druhá kniha, bundle sety. Ceny v CZK vč. DPH (placeholdery).'
-
           mk content/pages/shipping.md \
-            '# Doprava a doručení' \
-            '' \
+            '# Doprava a doručení' '' \
             'Zásilkovna / Kurýr / XL-Fragile. Pečlivé balení, možné více balíků.'
-
           mk content/pages/faq.md \
-            '# FAQ' \
-            '' \
+            '# FAQ' '' \
             'Výroba: tisky 1–2 dny, knihy 3–7 dnů, LF 2–5 dnů.' \
             'Data: JPG/PNG sRGB, 300 dpi (LF 180–240 dpi), spad 3–10 mm.'
 
@@ -89,7 +68,6 @@ jobs:
             'photobooks;Basic A4;20 stran;ks;599;+2 str. +39 Kč' \
             'calendars;A3 výška;13 listů;ks;399;rodinné +49' \
             'magnets;100x100;--;ks;39;--'
-
           mk content/shipping/shipping.cz.csv \
             'carrier;service;price_czk;notes' \
             'Zásilkovna;výdejní místo;79;menší zásilky' \
@@ -109,5 +87,5 @@ jobs:
           commit-message: "feat: add CZ content + pricing/shipping skeleton + FAQ + frames"
           body: |
             Automaticky vytvořený PR: CZ obsah produktů/stránek, skeleton ceníků a dopravy, FAQ a rámy/pasparty.
-            Po mergi vytvořte tag v0009 → Release vyrobí pbp_full_install_v0009.zip.
+            Po mergi vytvořte tag v0010 → Release vyrobí pbp_full_install_v0010.zip.
           draft: false
