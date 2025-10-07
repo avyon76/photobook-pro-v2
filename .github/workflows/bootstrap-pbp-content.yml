@@ -1,9 +1,97 @@
-name: PBP Sanity
+name: Bootstrap PBP Content (v3)
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
-  test:
+  boot:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "YAML OK"
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare files (block 1)
+        run: |
+          set -e
+          mkdir -p content/products content/pages content/pricing content/shipping docs
+          cat > content/products/prints.md <<'EOF'
+# Foto tisky (malý formát)
+Formáty: 9×13, 10×15, 13×18, 15×21, A4. Spad 3 mm, bezpečná zóna 5 mm, 300 dpi, sRGB.
+EOF
+          cat > content/products/large-format.md <<'EOF'
+# Velkoformát (LF)
+Plakáty/fine-art/desky/akryl/rámování. Spad 5–10 mm, 180–240 dpi, sRGB.
+EOF
+          cat > content/products/photobooks.md <<'EOF'
+# Fotoknihy (Basic/Pro/LayFlat)
+AI výběr, inteligentní layouty, preflight. 3 mm spad, 5 mm bezpečná zóna.
+EOF
+
+      - name: Prepare files (block 2)
+        run: |
+          set -e
+          cat > content/products/calendars.md <<'EOF'
+# Kalendáře
+A3 na výšku, 13 listů, kroužková vazba. Spad 3 mm, text ≥ 8 pt.
+EOF
+          cat > content/products/magnets.md <<'EOF'
+# Magnety
+Formáty 5×5–10×15, sety 3×1/2×2/4×1, dárkové balení. Spad 2–3 mm.
+EOF
+          cat > content/products/frames.md <<'EOF'
+# Rámy & pasparty
+Dřevo/hliník, AR sklo/plexi, pasparty 1.4–2.0 mm. Doporučený spad 5–10 mm.
+EOF
+          cat > content/pages/home.md <<'EOF'
+# Photobook Pro
+Tisk fotoknih, kalendářů, tisků, magnetů a LF. Konfigurátor brzy.
+EOF
+          cat > content/pages/pricing.md <<'EOF'
+# Ceník a promo akce
+BOGO, druhá kniha, bundle sety. Ceny v CZK vč. DPH (placeholdery).
+EOF
+          cat > content/pages/shipping.md <<'EOF'
+# Doprava
+Zásilkovna, Kurýr, XL/Fragile. Pečlivé balení, možné více balíků.
+EOF
+          cat > content/pages/faq.md <<'EOF'
+# FAQ
+Výroba: tisky 1–2 dny, knihy 3–7 dnů, LF 2–5 dnů. Data: JPG/PNG sRGB.
+EOF
+          cat > docs/PhotobookPro_MASTER_BRIEF_v0_1_to_v88_0.txt <<'EOF'
+PhotobookPro MASTER BRIEF (placeholder) – doplňte aktuální verzi.
+EOF
+
+      - name: Pricing/Shipping skeleton (block 3)
+        run: |
+          set -e
+          mkdir -p content/pricing content/shipping
+          cat > content/pricing/pricing.cz.csv <<'EOF'
+product;variant;size/material;unit;price_czk;notes
+prints;10x15;mat;ks;9;placeholder
+large-format;plakát 200g;1 m2;m2;450;min. 0,2 m2
+photobooks;Basic A4;20 stran;ks;599;+2 str. +39 Kč
+calendars;A3 výška;13 listů;ks;399;rodinné +49
+magnets;100x100;--;ks;39;--
+EOF
+          cat > content/shipping/shipping.cz.csv <<'EOF'
+carrier;service;price_czk;notes
+Zásilkovna;výdejní místo;79;menší zásilky
+Kurýr;door-to-door;129;standard
+Kurýr XL/Fragile;nadrozměr/rám;249+;speciální balení
+EOF
+
+      - name: Create PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: feat/products-v35-1
+          base: main
+          title: "feat/products-v35-1: CZ obsah + pricing/shipping + FAQ + frames"
+          commit-message: "feat: add CZ content + pricing/shipping skeleton + FAQ + frames"
+          body: |
+            Automaticky vytvořený PR: CZ obsah produktů/stránek, skeleton ceníků a dopravy, FAQ a rámy/pasparty.
+            Po mergi vytvořte tag v0009 → Release vyrobí pbp_full_install_v0009.zip.
+          draft: false
