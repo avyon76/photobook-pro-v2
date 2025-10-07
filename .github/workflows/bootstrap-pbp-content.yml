@@ -1,4 +1,4 @@
-name: Bootstrap PBP Content (v3)
+name: Bootstrap PBP Content (v4)
 on:
   workflow_dispatch:
 
@@ -13,78 +13,94 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare files (block 1)
+      - name: Create CZ content (no heredocs)
+        shell: bash
         run: |
-          set -e
-          mkdir -p content/products content/pages content/pricing content/shipping docs
-          cat > content/products/prints.md <<'EOF'
-# Foto tisky (malý formát)
-Formáty: 9×13, 10×15, 13×18, 15×21, A4. Spad 3 mm, bezpečná zóna 5 mm, 300 dpi, sRGB.
-EOF
-          cat > content/products/large-format.md <<'EOF'
-# Velkoformát (LF)
-Plakáty/fine-art/desky/akryl/rámování. Spad 5–10 mm, 180–240 dpi, sRGB.
-EOF
-          cat > content/products/photobooks.md <<'EOF'
-# Fotoknihy (Basic/Pro/LayFlat)
-AI výběr, inteligentní layouty, preflight. 3 mm spad, 5 mm bezpečná zóna.
-EOF
+          set -euo pipefail
 
-      - name: Prepare files (block 2)
-        run: |
-          set -e
-          cat > content/products/calendars.md <<'EOF'
-# Kalendáře
-A3 na výšku, 13 listů, kroužková vazba. Spad 3 mm, text ≥ 8 pt.
-EOF
-          cat > content/products/magnets.md <<'EOF'
-# Magnety
-Formáty 5×5–10×15, sety 3×1/2×2/4×1, dárkové balení. Spad 2–3 mm.
-EOF
-          cat > content/products/frames.md <<'EOF'
-# Rámy & pasparty
-Dřevo/hliník, AR sklo/plexi, pasparty 1.4–2.0 mm. Doporučený spad 5–10 mm.
-EOF
-          cat > content/pages/home.md <<'EOF'
-# Photobook Pro
-Tisk fotoknih, kalendářů, tisků, magnetů a LF. Konfigurátor brzy.
-EOF
-          cat > content/pages/pricing.md <<'EOF'
-# Ceník a promo akce
-BOGO, druhá kniha, bundle sety. Ceny v CZK vč. DPH (placeholdery).
-EOF
-          cat > content/pages/shipping.md <<'EOF'
-# Doprava
-Zásilkovna, Kurýr, XL/Fragile. Pečlivé balení, možné více balíků.
-EOF
-          cat > content/pages/faq.md <<'EOF'
-# FAQ
-Výroba: tisky 1–2 dny, knihy 3–7 dnů, LF 2–5 dnů. Data: JPG/PNG sRGB.
-EOF
-          cat > docs/PhotobookPro_MASTER_BRIEF_v0_1_to_v88_0.txt <<'EOF'
-PhotobookPro MASTER BRIEF (placeholder) – doplňte aktuální verzi.
-EOF
+          mk() { f="$1"; shift; mkdir -p "$(dirname "$f")"; printf '%s\n' "$@" > "$f"; }
 
-      - name: Pricing/Shipping skeleton (block 3)
-        run: |
-          set -e
-          mkdir -p content/pricing content/shipping
-          cat > content/pricing/pricing.cz.csv <<'EOF'
-product;variant;size/material;unit;price_czk;notes
-prints;10x15;mat;ks;9;placeholder
-large-format;plakát 200g;1 m2;m2;450;min. 0,2 m2
-photobooks;Basic A4;20 stran;ks;599;+2 str. +39 Kč
-calendars;A3 výška;13 listů;ks;399;rodinné +49
-magnets;100x100;--;ks;39;--
-EOF
-          cat > content/shipping/shipping.cz.csv <<'EOF'
-carrier;service;price_czk;notes
-Zásilkovna;výdejní místo;79;menší zásilky
-Kurýr;door-to-door;129;standard
-Kurýr XL/Fragile;nadrozměr/rám;249+;speciální balení
-EOF
+          # Products
+          mk content/products/prints.md \
+            '# Foto tisky (malý formát)' \
+            '' \
+            'Formáty: 9×13, 10×15, 13×18, 15×21, A4.' \
+            'Spad 3 mm, bezpečná zóna 5 mm, 300 dpi, sRGB.' \
+            'Okraje: bez okraje / bílý rámeček. Výroba: 1–2 dny.'
 
-      - name: Create PR
+          mk content/products/large-format.md \
+            '# Velkoformát (LF)' \
+            '' \
+            'Plakáty, fine-art, desky (PVC/Kapa/Dibond), akryl, rámování.' \
+            'Spad 5–10 mm, 180–240 dpi, sRGB. Max šíře ~320 cm.'
+
+          mk content/products/photobooks.md \
+            '# Fotoknihy (Basic / Pro / LayFlat)' \
+            '' \
+            'AI výběr fotek, inteligentní layouty, preflight.' \
+            '3 mm spad, 5 mm bezpečná zóna. Výroba 3–7 dnů.'
+
+          mk content/products/calendars.md \
+            '# Kalendáře' \
+            '' \
+            'A3 na výšku, 13 listů, kroužková vazba s háčkem.' \
+            'Spad 3 mm, text ≥ 8 pt.'
+
+          mk content/products/magnets.md \
+            '# Foto magnety' \
+            '' \
+            'Formáty 5×5 až 10×15, sety 3×1 / 2×2 / 4×1.' \
+            'Spad 2–3 mm, sRGB 300 dpi. Dárkové balení volitelně.'
+
+          mk content/products/frames.md \
+            '# Rámy & pasparty' \
+            '' \
+            'Rámy dřevo/hliník, AR sklo/plexi. Pasparty 1.4–2.0 mm.' \
+            'Doporučený spad 5–10 mm. Ceny placeholder – doplníme.'
+
+          # Pages
+          mk content/pages/home.md \
+            '# Photobook Pro' \
+            '' \
+            'Tisk fotoknih, kalendářů, tisků, magnetů a LF. Konfigurátor brzy.' \
+            'Rychlá výroba • Preflight kontrola • Dárkové balení'
+
+          mk content/pages/pricing.md \
+            '# Ceník a promo akce' \
+            '' \
+            'BOGO, druhá kniha, bundle sety. Ceny v CZK vč. DPH (placeholdery).'
+
+          mk content/pages/shipping.md \
+            '# Doprava a doručení' \
+            '' \
+            'Zásilkovna / Kurýr / XL-Fragile. Pečlivé balení, možné více balíků.'
+
+          mk content/pages/faq.md \
+            '# FAQ' \
+            '' \
+            'Výroba: tisky 1–2 dny, knihy 3–7 dnů, LF 2–5 dnů.' \
+            'Data: JPG/PNG sRGB, 300 dpi (LF 180–240 dpi), spad 3–10 mm.'
+
+          # Pricing & shipping skeleton (CSV – snadno editovatelné)
+          mk content/pricing/pricing.cz.csv \
+            'product;variant;size/material;unit;price_czk;notes' \
+            'prints;10x15;mat;ks;9;placeholder' \
+            'large-format;plakát 200g;1 m2;m2;450;min. 0,2 m2' \
+            'photobooks;Basic A4;20 stran;ks;599;+2 str. +39 Kč' \
+            'calendars;A3 výška;13 listů;ks;399;rodinné +49' \
+            'magnets;100x100;--;ks;39;--'
+
+          mk content/shipping/shipping.cz.csv \
+            'carrier;service;price_czk;notes' \
+            'Zásilkovna;výdejní místo;79;menší zásilky' \
+            'Kurýr;door-to-door;129;standard' \
+            'Kurýr XL/Fragile;nadrozměr/rám;249+;speciální balení'
+
+          # Brief placeholder
+          mk docs/PhotobookPro_MASTER_BRIEF_v0_1_to_v88_0.txt \
+            'PhotobookPro MASTER BRIEF (placeholder) – doplňte aktuální verzi.'
+
+      - name: Open PR
         uses: peter-evans/create-pull-request@v6
         with:
           branch: feat/products-v35-1
