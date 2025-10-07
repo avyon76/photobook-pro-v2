@@ -1,0 +1,27 @@
+name: Create Release Tag
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Tag ve formátu v0010"
+        required: true
+permissions:
+  contents: write
+jobs:
+  tag-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create tag
+        env:
+          VERSION: ${{ github.event.inputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "${VERSION}"
+          git push origin "${VERSION}"
+      - name: Draft GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          generate_release_notes: true
