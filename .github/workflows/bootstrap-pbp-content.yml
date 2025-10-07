@@ -1,25 +1,25 @@
-name: Bootstrap PBP Content
+name: Bootstrap PBP Content (v2)
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
 
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
-  make-pr:
+  boot:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create feature branch
-        run: |
-          git checkout -b feat/products-v35-1
-
-      - name: Write content files
+      - name: Generate CZ content, workflows, FAQ, frames
         shell: bash
         run: |
-          set -e
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b feat/products-v35-1 || git checkout feat/products-v35-1
+
           mkdir -p content/products content/pages content/pricing content/shipping docs .github/workflows
 
           cat > content/products/prints.md <<'EOF'
@@ -88,7 +88,7 @@ EOF
 # Rámy & pasparty
 **Rámy:** dřevo / hliník (tenký / standard profil), barvy: černá, bílá, přírodní, hliník.  
 **Zasklení:** float sklo / plexi / antireflex (AR). **Závěsy:** háčky / struna.  
-**Pasparty:** bílé / černé, tloušťka 1,4–2,0 mm, vnitřní výřez na míru.
+**Pasparty:** bílé / černé, tl. 1,4–2,0 mm, vnitřní výřez na míru.
 
 ### Prepress pro rámování
 - Doporučujeme 5–10 mm spadávku pro přesný ořez.
@@ -135,100 +135,54 @@ EOF
           cat > content/pages/faq.md <<'EOF'
 # FAQ
 **Jak dlouho trvá výroba?**  
-Tisky 1–2 dny, magnety 1–3 dny, kalendáře 3–5 dnů, fotoknihy 3–7 dnů, LF a rámování 2–5 dnů.
+Tisky 1–2 dny, magnety 1–3 dny, kalendáře 3–5 dnů, fotoknihy 3–7 dnů, LF/rámování 2–5 dnů.
 
 **Jaká data dodávat?**  
 JPG/PNG v sRGB, 300 dpi (LF 180–240 dpi). Spad: 3–10 mm dle produktu, bezpečná zóna 5–10 mm.
 
 **Barevnost a kalibrace?**  
-Pracujeme v sRGB. Pokud potřebujete přesné firemní barvy, kontaktujte nás (proof/ICC konzultace).
+Pracujeme v sRGB. Pro přesné firemní barvy nabídneme proof/ICC konzultaci.
 
 **Změna objednávky / reklamace?**  
-Co nejdříve po objednání. Reklamace řešíme individuálně – napište nám s číslem objednávky a fotkami.
+Co nejdříve po objednání. Reklamace řešíme individuálně – uveďte číslo objednávky a fotky.
 
 **GDPR a bezpečí dat?**  
-Vaše data zpracováváme pro výrobu, uchováváme po nezbytně nutnou dobu a chráníme vůči třetím stranám.
+Vaše data zpracujeme pro výrobu, uchováme po nezbytnou dobu a nešíříme třetím stranám.
 EOF
 
           cat > content/pricing/pricing.cz.json <<'EOF'
-{
-  "currency": "CZK",
-  "vat_percent": 21,
-  "price_lists": [
-    { "product": "prints",
-      "base": [
-        {"size_mm":"100x150","paper":"mat","price":9.0},
-        {"size_mm":"130x180","paper":"mat","price":12.0},
-        {"size_mm":"150x210","paper":"mat","price":19.0}
-      ],
-      "options": [
-        {"name":"lesk","add":0},
-        {"name":"polomat","add":0},
-        {"name":"bílý rámeček","add":0}
-      ],
-      "notes": "Placeholder – doplňte reálné ceny."
-    },
-    { "product": "large-format",
-      "base": [
-        {"material":"plakát 200g","sqm_price":450},
-        {"material":"fineart 308g","sqm_price":890},
-        {"material":"PVC 5 mm","sqm_price":990},
-        {"material":"Kapa 10 mm","sqm_price":1150},
-        {"material":"Dibond 3 mm","sqm_price":1650}
-      ],
-      "options": [
-        {"name":"laminace mat/lesk","sqm_add":180},
-        {"name":"rám","from":399}
-      ],
-      "notes": "Min. účtovaná plocha 0,2 m2."
-    },
-    { "product": "photobooks",
-      "base": [
-        {"type":"Basic A4","pages_included":20,"price":599},
-        {"type":"Pro A4","pages_included":20,"price":899},
-        {"type":"LayFlat 210x210","pages_included":20,"price":1199}
-      ],
-      "per_two_pages_add": [
-        {"Basic A4":39},
-        {"Pro A4":59},
-        {"LayFlat 210x210":89}
-      ],
-      "options": [
-        {"name":"tvrdé desky (Basic→Pro)","add":300},
-        {"name":"dárkové balení","add":149}
-      ]
-    },
-    { "product": "calendars",
-      "base": [
-        {"format":"A3 na výšku, 13 listů","price":399}
-      ],
-      "options": [
-        {"name":"rodinné kalendárium","add":49},
-        {"name":"logo/firemní branding","add":99}
-      ]
-    },
-    { "product": "magnets",
-      "base": [
-        {"size_mm":"70x70","price":29},
-        {"size_mm":"100x100","price":39},
-        {"size_mm":"100x150","price":49}
-      ],
-      "sets": [
-        {"name":"3×1","discount_percent":5},
-        {"name":"2×2","discount_percent":8},
-        {"name":"4×1","discount_percent":10}
-      ],
-      "options": [
-        {"name":"dárková krabička","add":59}
-      ]
-    }
-  ],
-  "promotions": [
-    {"type":"BOGO","description":"Kup 1, druhý se slevou 50 % (stejná konfigurace)"},
-    {"type":"bundle","description":"Set magnetů – cenové zvýhodnění"},
-    {"type":"second-book","description":"Druhá fotokniha stejné konfigurace se slevou"}
-  ]
-}
+{"currency":"CZK","vat_percent":21,
+ "price_lists":[
+  {"product":"prints","base":[
+    {"size_mm":"100x150","paper":"mat","price":9.0},
+    {"size_mm":"130x180","paper":"mat","price":12.0},
+    {"size_mm":"150x210","paper":"mat","price":19.0}],
+   "options":[{"name":"lesk","add":0},{"name":"polomat","add":0},{"name":"bílý rámeček","add":0}],
+   "notes":"Placeholder – doplňte reálné ceny."},
+  {"product":"large-format","base":[
+    {"material":"plakát 200g","sqm_price":450},
+    {"material":"fineart 308g","sqm_price":890},
+    {"material":"PVC 5 mm","sqm_price":990},
+    {"material":"Kapa 10 mm","sqm_price":1150},
+    {"material":"Dibond 3 mm","sqm_price":1650}],
+   "options":[{"name":"laminace mat/lesk","sqm_add":180},{"name":"rám","from":399}],
+   "notes":"Min. účtovaná plocha 0,2 m2."},
+  {"product":"photobooks","base":[
+    {"type":"Basic A4","pages_included":20,"price":599},
+    {"type":"Pro A4","pages_included":20,"price":899},
+    {"type":"LayFlat 210x210","pages_included":20,"price":1199}],
+   "per_two_pages_add":[{"Basic A4":39},{"Pro A4":59},{"LayFlat 210x210":89}],
+   "options":[{"name":"tvrdé desky (Basic→Pro)","add":300},{"name":"dárkové balení","add":149}]},
+  {"product":"calendars","base":[{"format":"A3 na výšku, 13 listů","price":399}],
+   "options":[{"name":"rodinné kalendárium","add":49},{"name":"logo/firemní branding","add":99}]},
+  {"product":"magnets","base":[
+    {"size_mm":"70x70","price":29},{"size_mm":"100x100","price":39},{"size_mm":"100x150","price":49}],
+   "sets":[{"name":"3×1","discount_percent":5},{"name":"2×2","discount_percent":8},{"name":"4×1","discount_percent":10}],
+   "options":[{"name":"dárková krabička","add":59}]}],
+ "promotions":[
+  {"type":"BOGO","description":"Kup 1, druhý se slevou 50 % (stejná konfigurace)"},
+  {"type":"bundle","description":"Set magnetů – cenové zvýhodnění"},
+  {"type":"second-book","description":"Druhá fotokniha stejné konfigurace se slevou"}]}
 EOF
 
           cat > content/pricing/pricing.cz.csv <<'EOF'
@@ -248,23 +202,18 @@ magnets;100x150;--;ks;49;--
 EOF
 
           cat > content/shipping/shipping.cz.json <<'EOF'
-{
-  "currency": "CZK",
-  "carriers": [
-    {"name":"Zásilkovna","service":"výdejní místo","price":79,"max_size":"standard","notes":"menší zásilky"},
-    {"name":"Kurýr","service":"door-to-door","price":129,"max_size":"střední","notes":""},
-    {"name":"Kurýr XL/Fragile","service":"nadrozměr/rám/světlocitlivé","price_from":249,"notes":"balení + výztuhy"}
-  ],
-  "packaging": [
-    {"type":"standard","included":true},
-    {"type":"XL/fragile","add_price":69,"includes":"rohy, výztuhy, folie"}
-  ],
-  "rules": [
-    "Více položek může být odesláno ve více balících kvůli bezpečnosti.",
-    "Osobní odběr po dohodě (0 Kč).",
-    "Termíny a ceny se potvrzují v objednávce dle konfigurace."
-  ]
-}
+{"currency":"CZK",
+ "carriers":[
+  {"name":"Zásilkovna","service":"výdejní místo","price":79,"max_size":"standard","notes":"menší zásilky"},
+  {"name":"Kurýr","service":"door-to-door","price":129,"max_size":"střední","notes":""},
+  {"name":"Kurýr XL/Fragile","service":"nadrozměr/rám/světlocitlivé","price_from":249,"notes":"balení + výztuhy"}],
+ "packaging":[
+  {"type":"standard","included":true},
+  {"type":"XL/fragile","add_price":69,"includes":"rohy, výztuhy, folie"}],
+ "rules":[
+  "Více položek může být odesláno ve více balících kvůli bezpečnosti.",
+  "Osobní odběr po dohodě (0 Kč).",
+  "Termíny a ceny se potvrzují v objednávce dle konfigurace."]}
 EOF
 
           cat > content/shipping/shipping.cz.csv <<'EOF'
@@ -279,7 +228,7 @@ PhotobookPro MASTER BRIEF v0_1 → v88_0
 (Placeholder – doplňte aktuální verzi „Bible“; soubor zde držíme kvůli konzistenci balíku.)
 EOF
 
-          # Workflows pro budoucí releasy
+          # Release workflow (přidáme i pokud už existuje)
           cat > .github/workflows/full-bundle-release.yml <<'EOF'
 name: Full Bundle Release
 on:
@@ -294,13 +243,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup Node
         if: ${{ hashFiles('studio/**') != '' }}
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-
       - name: Build Studio
         if: ${{ hashFiles('studio/**') != '' }}
         run: |
@@ -312,19 +259,16 @@ jobs:
           cp -r studio/.next dist/studio 2>/dev/null || true
           [ -d "studio/out" ] && cp -r studio/out dist/studio || true
           [ -d "studio/build" ] && cp -r studio/build dist/studio || true
-
       - name: Package WP plugin
         run: |
           if [ -d "wp-plugin" ]; then
             (cd wp-plugin && zip -r ../pbp-bridge.zip .)
           fi
-
       - name: Package Elementor Kit
         run: |
           if [ -d "elementor" ]; then
             zip -r elementor_kit.zip elementor
           fi
-
       - name: Collect bundle & zip
         run: |
           VERSION="${GITHUB_REF_NAME}"
@@ -332,9 +276,8 @@ jobs:
           [ -d dist ] && cp -r dist bundle/dist || true
           [ -f pbp-bridge.zip ] && mv pbp-bridge.zip bundle/ || true
           [ -f elementor_kit.zip ] && mv elementor_kit.zip bundle/ || true
-          ls | grep -E 'PhotobookPro_MASTER_BRIEF.*\\.txt' && cp PhotobookPro_MASTER_BRIEF*.txt bundle/ || true
+          ls | grep -E 'PhotobookPro_MASTER_BRIEF.*\.txt' && cp PhotobookPro_MASTER_BRIEF*.txt bundle/ || true
           zip -r pbp_full_install_${VERSION}.zip bundle
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -366,25 +309,15 @@ jobs:
           path: pbp_full_install_PR${{ github.event.number }}.zip
 EOF
 
-      - name: Commit & push branch
-        run: |
-          set -e
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "feat: CZ obsah + workflowy + pricing/shipping + FAQ + frames"
-          git push origin feat/products-v35-1
+          git commit -m "feat: CZ obsah + workflowy + pricing/shipping + FAQ + frames" || echo "No changes to commit"
 
-      - name: Open PR via API
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-          BASE: ${{ github.event.repository.default_branch }}
-        run: |
-          PR_TITLE="feat/products-v35-1: CZ obsah + workflowy + pricing/shipping + FAQ + frames"
-          PR_BODY="Automaticky vytvořený PR: přidává obsah a workflowy dle pbp_full_install_v35_1."
-          curl -s -X POST -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/${REPO}/pulls \
-            -d "{\"title\":\"${PR_TITLE}\",\"body\":\"${PR_BODY}\",\"head\":\"feat/products-v35-1\",\"base\":\"${BASE}\"}" \
-            > pr.json
-          echo "PR response:"; cat pr.json
+      - name: Open PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: feat/products-v35-1
+          base: ${{ github.event.repository.default_branch }}
+          title: "feat/products-v35-1: CZ obsah + workflowy + pricing/shipping + FAQ + frames"
+          body: |
+            Automaticky vytvořený PR: přidává obsah a workflowy dle pbp_full_install_v35_1.
+          draft: false
