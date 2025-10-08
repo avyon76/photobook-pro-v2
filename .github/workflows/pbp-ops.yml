@@ -1,0 +1,170 @@
+name: PBP Ops
+on:
+  workflow_dispatch:
+    inputs:
+      op:
+        description: "Operace"
+        required: true
+        type: choice
+        options:
+          - add-faq-extended
+          - add-frames-pricing
+          - add-pricing-shipping-skeleton
+          - fix-release
+      pr_title:
+        description: "Volitelný název PR"
+        required: false
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: apply
+        name: Apply change
+        shell: bash
+        env:
+          OP: ${{ github.event.inputs.op }}
+        run: |
+          set -euo pipefail
+          mk() { f="$1"; shift; mkdir -p "$(dirname "$f")"; printf '%s\n' "$@" > "$f"; }
+          BR="ops/${OP}-$(date +%Y%m%d%H%M%S)"
+          echo "branch=$BR" >> "$GITHUB_OUTPUT"
+          git checkout -b "$BR"
+
+          case "$OP" in
+            add-faq-extended)
+              mk content/pages/faq.md \
+                '# FAQ' '' \
+                '### Výroba a termíny' \
+                '- Tisky 1–2 dny, magnety 1–3 dny, kalendáře 3–5 dnů, fotoknihy 3–7 dnů, LF/rámování 2–5 dnů.' '' \
+                '### Data k tisku' \
+                '- JPG/PNG sRGB, 300 dpi (LF 180–240 dpi), spad 3–10 mm, bezpečná zóna 5–10 mm.' '' \
+                '### Barevnost' \
+                '- Pracujeme v sRGB. Pro přesné brand barvy umíme proof/ICC konzultaci.' '' \
+                '### Reklamace' \
+                '- Napište do 7 dnů od převzetí, přiložte číslo objednávky a fotky. Řešíme individuálně.' '' \
+                '### Poškození při dopravě' \
+                '- Vyfoťte balík i obsah a ozvěte se do 24 h – vyřídíme výměnu.' '' \
+                '### GDPR' \
+                '- Data zpracováváme pouze kvůli výrobě, uchováváme jen nezbytně dlouho.'
+              ;;
+
+            add-frames-pricing)
+              mk content/products/frames.md \
+                '# Rámy & pasparty' '' \
+                '**Rámy:** dřevo/hliník (tenký/standard), barvy: černá, bílá, přírodní, hliník.' \
+                '**Zasklení:** float sklo / plexi / antireflex (AR). **Pasparty:** 1.4–2.0 mm.' \
+                '**Závěsy:** háčky / struna. **Prepress:** doporučený spad 5–10 mm.' '' \
+                '### Ceník (orientační, CZK – doplňte reálné)' \
+                '- rám od 399 Kč, AR sklo +150 Kč, pasparta +129 Kč.'
+              mk content/pricing/frames.cz.csv \
+                'frame_type;profile;size;glazing;matting;price_czk' \
+                'wood;thin;30x40;float;none;399' \
+                'wood;thin;30x40;ar;none;549' \
+                'aluminum;thin;30x40;plexi;none;499' \
+                'matboard;single;30x40;;1.4mm;129' \
+                'matboard;double;30x40;;2.0mm;199'
+              mk content/pricing/frames.cz.json \
+                '{' \
+                '  "currency":"CZK",' \
+                '  "items": [' \
+                '    {"frame_type":"wood","profile":"thin","size":"30x40","glazing":"float","matting":"none","price":399},' \
+                '    {"frame_type":"wood","profile":"thin","size":"30x40","glazing":"ar","matting":"none","price":549},' \
+                '    {"frame_type":"aluminum","profile":"thin","size":"30x40","glazing":"plexi","matting":"none","price":499},' \
+                '    {"frame_type":"matboard","profile":"single","size":"30x40","matting":"1.4mm","price":129},' \
+                '    {"frame_type":"matboard","profile":"double","size":"30x40","matting":"2.0mm","price":199}' \
+                '  ]' \
+                '}'
+              ;;
+
+            add-pricing-shipping-skeleton)
+              mk content/pricing/pricing.cz.csv \
+                'product;variant;size/material;unit;price_czk;notes' \
+                'prints;10x15;mat;ks;9;placeholder' \
+                'large-format;plakát 200g;1 m2;m2;450;min. 0,2 m2' \
+                'photobooks;Basic A4;20 stran;ks;599;+2 str. +39 Kč' \
+                'calendars;A3 výška;13 listů;ks;399;rodinné +49' \
+                'magnets;100x100;--;ks;39;--'
+              mk content/shipping/shipping.cz.csv \
+                'carrier;service;price_czk;notes' \
+                'Zásilkovna;výdejní místo;79;menší zásilky' \
+                'Kurýr;door-to-door;129;standard' \
+                'Kurýr XL/Fragile;nadrozměr/rám;249+;speciální balení'
+              ;;
+
+            fix-release)
+              mk .github/workflows/full-bundle-release.yml \
+                'name: Full Bundle Release' \
+                'on:' \
+                '  push:' \
+                "    tags: ['v*']" \
+                '' \
+                'permissions:' \
+                '  contents: write' \
+                '' \
+                'jobs:' \
+                '  build-and-release:' \
+                '    runs-on: ubuntu-latest' \
+                '    steps:' \
+                '      - uses: actions/checkout@v4' \
+                '      - name: Setup Node' \
+                "        if: \${{ hashFiles('studio/**') != '' }}" \
+                '        uses: actions/setup-node@v4' \
+                '        with:' \
+                "          node-version: '20'" \
+                '      - name: Build Studio' \
+                "        if: \${{ hashFiles('studio/**') != '' }}" \
+                '        run: |' \
+                '          cd studio' \
+                '          npm ci' \
+                '          npm run build' \
+                '          cd ..' \
+                '          mkdir -p dist/studio' \
+                '          cp -r studio/.next dist/studio 2>/dev/null || true' \
+                '          [ -d "studio/out" ] && cp -r studio/out dist/studio || true' \
+                '          [ -d "studio/build" ] && cp -r studio/build dist/studio || true' \
+                '      - name: Package WP plugin' \
+                '        run: |' \
+                '          if [ -d "wp-plugin" ]; then' \
+                '            (cd wp-plugin && zip -r ../pbp-bridge.zip .)' \
+                '          fi' \
+                '      - name: Package Elementor Kit' \
+                '        run: |' \
+                '          if [ -d "elementor" ]; then' \
+                '            zip -r elementor_kit.zip elementor' \
+                '          fi' \
+                '      - name: Collect bundle & zip' \
+                '        run: |' \
+                '          VERSION="${GITHUB_REF_NAME}"' \
+                '          mkdir -p bundle' \
+                '          [ -d dist ] && cp -r dist bundle/dist || true' \
+                '          [ -f pbp-bridge.zip ] && mv pbp-bridge.zip bundle/ || true' \
+                '          [ -f elementor_kit.zip ] && mv elementor_kit.zip bundle/ || true' \
+                "          ls | grep -E 'PhotobookPro_MASTER_BRIEF.*\\.txt' && cp PhotobookPro_MASTER_BRIEF*.txt bundle/ || true" \
+                '          zip -r pbp_full_install_${VERSION}.zip bundle' \
+                '      - name: Create GitHub Release' \
+                '        uses: softprops/action-gh-release@v2' \
+                '        with:' \
+                '          files: pbp_full_install_${{ github.ref_name }}.zip' \
+                '          generate_release_notes: true'
+              ;;
+
+            *)
+              echo "Unknown op: $OP"; exit 1;;
+          esac
+
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "ops: ${OP}"
+
+      - name: Open PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: ${{ steps.apply.outputs.branch }}
+          base: main
+          title: ${{ github.event.inputs.pr_title || format('ops: {0}', github.event.inputs.op) }}
+          body: "Automatický PR z PBP Ops"
+          draft: false
