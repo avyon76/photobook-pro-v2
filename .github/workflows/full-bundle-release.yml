@@ -1,0 +1,53 @@
+name: Full Bundle Release
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        if: ${{ hashFiles('studio/**') != '' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Build Studio
+        if: ${{ hashFiles('studio/**') != '' }}
+        run: |
+          cd studio
+          npm ci
+          npm run build
+          cd ..
+          mkdir -p dist/studio
+          cp -r studio/.next dist/studio 2>/dev/null || true
+          [ -d "studio/out" ] && cp -r studio/out dist/studio || true
+          [ -d "studio/build" ] && cp -r studio/build dist/studio || true
+      - name: Package WP plugin
+        run: |
+          if [ -d "wp-plugin" ]; then
+            (cd wp-plugin && zip -r ../pbp-bridge.zip .)
+          fi
+      - name: Package Elementor Kit
+        run: |
+          if [ -d "elementor" ]; then
+            zip -r elementor_kit.zip elementor
+          fi
+      - name: Collect bundle & zip
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          mkdir -p bundle
+          [ -d dist ] && cp -r dist bundle/dist || true
+          [ -f pbp-bridge.zip ] && mv pbp-bridge.zip bundle/ || true
+          [ -f elementor_kit.zip ] && mv elementor_kit.zip bundle/ || true
+          ls | grep -E 'PhotobookPro_MASTER_BRIEF.*\.txt' && cp PhotobookPro_MASTER_BRIEF*.txt bundle/ || true
+          zip -r pbp_full_install_${VERSION}.zip bundle
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: pbp_full_install_${{ github.ref_name }}.zip
+          generate_release_notes: true
