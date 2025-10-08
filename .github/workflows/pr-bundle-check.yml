@@ -1,0 +1,22 @@
+name: PR Bundle Check
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  check-bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify bundle exists
+        run: |
+          echo "Checking for pbp_full_install archive..."
+          if ls pbp_full_install*.zip >/dev/null 2>&1; then
+            echo "Bundle archive found."
+          else
+            echo "Bundle archive not found."
+            exit 1
+          fi

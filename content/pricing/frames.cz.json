@@ -1,0 +1,10 @@
+{
+  "currency": "CZK",
+  "items": [
+    {"frame_type": "wood", "profile": "thin", "size": "30x40", "glazing": "float", "matting": "none", "price": 399},
+    {"frame_type": "wood", "profile": "thin", "size": "30x40", "glazing": "ar", "matting": "none", "price": 549},
+    {"frame_type": "aluminum", "profile": "thin", "size": "30x40", "glazing": "plexi", "matting": "none", "price": 499},
+    {"frame_type": "matboard", "profile": "single", "size": "30x40", "matting": "1.4mm", "price": 129},
+    {"frame_type": "matboard", "profile": "double", "size": "30x40", "matting": "2.0mm", "price": 199}
+  ]
+}
