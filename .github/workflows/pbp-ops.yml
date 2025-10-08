@@ -1,12 +1,12 @@
-name: PBP Ops (v5-mini)
+name: PBP Ops (v6)
 on:
   workflow_dispatch:
     inputs:
       op:
-        description: "Operace (např. add-faq-extended | add-frames-pricing)"
+        description: "Operace: add-faq-extended | add-frames-pricing | add-pricing-shipping-skeleton | fix-release"
         required: true
       pr_title:
-        description: "Volitelný název PR (jinak se použije ops:<op>)"
+        description: "Volitelný název PR (jinak se použije 'ops <op>')"
         required: false
 
 permissions:
@@ -26,11 +26,7 @@ jobs:
           OP: ${{ github.event.inputs.op }}
         run: |
           set -euo pipefail
-
-          # helper pro zápis souboru
           mk() { f="$1"; shift; mkdir -p "$(dirname "$f")"; printf '%s\n' "$@" > "$f"; }
-
-          # vytvoř odvozenou větev
           BR="ops/${OP}-$(date +%Y%m%d%H%M%S)"
           echo "branch=$BR" >> "$GITHUB_OUTPUT"
           git checkout -b "$BR"
@@ -152,18 +148,38 @@ jobs:
                 '          generate_release_notes: true'
               ;;
 
-            *)
-              echo "Unknown op: $OP"; exit 1;;
+            *) echo "Unknown op: $OP"; exit 1;;
           esac
 
           git add -A
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "ops: ${OP}"
 
-      - name: Open PR
-        uses: peter-evans/create-pull-request@v6
-        with:
-          branch: ${{ steps.apply.outputs.branch }}
-          base: main
-          title: "${{ github.event.inputs.pr_title != '' && github.event.inputs.pr_title || format('ops {0}', github.event.inputs.op) }}"
-          body: "Automatický PR z PBP Ops"
-          draft: false
+      - name: Push branch (manual)
+        env:
+          BR: ${{ steps.apply.outputs.branch }}
+          REPO: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git
+          git push --set-upstream origin "$BR"
+
+      - name: Open PR (manual via API)
+        env:
+          BR: ${{ steps.apply.outputs.branch }}
+          REPO: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TITLE_IN: ${{ github.event.inputs.pr_title }}
+          BASE: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          TITLE="${TITLE_IN:-ops ${BR}}"
+          SAFE_TITLE=$(printf '%s' "$TITLE" | sed 's/"/\\"/g')
+          BODY='Automatický PR z PBP Ops'
+          curl -s -X POST \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${REPO}/pulls" \
+            -d "{\"title\":\"${SAFE_TITLE}\",\"head\":\"${BR}\",\"base\":\"${BASE}\",\"body\":\"${BODY}\"}" \
+            > pr.json
+          echo "PR response:"; sed -n '1,80p' pr.json
