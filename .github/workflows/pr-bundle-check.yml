@@ -26,7 +26,7 @@ jobs:
           # workflows
           check ".github/workflows/full-bundle-release.yml"
           check ".github/workflows/pr-bundle-check.yml"
-          # product pages
+          # product/page content + pricing/shipping + brief
           for f in \
             content/products/prints.md \
             content/products/large-format.md \
@@ -43,20 +43,14 @@ jobs:
             content/pricing/frames.cz.json \
             content/shipping/shipping.cz.csv \
             docs/PhotobookPro_MASTER_BRIEF_v0_1_to_v88_0.txt
-          do
-            check "$f"
-          done
+          do check "$f"; done
           [ $missing -eq 0 ] || { echo "Some required files are missing"; exit 1; }
 
-      - name: Quick CSV sanity checks
+      - name: Quick CSV sanity checks (frames)
         run: |
-          set -e
-          # rámové CSV: kontrola hlavičky a počtu polí (6)
-          awk -F';' 'NR==1 { if ($0 != "frame_type;profile;size;glazing;matting;price_czk") { print "Bad frames.cz.csv header: " $0; exit 1 } }
+          awk -F';' 'NR==1 { if ($0 != "frame_type;profile;size;glazing;matting;price_czk") { print "Bad header: "$0; exit 1 } }
                       NR>1 { if (NF<6) { printf "Row %d has %d fields\n", NR, NF; exit 1 } }' content/pricing/frames.cz.csv
-          # pricing.cz.csv aspoň existuje – detailní validace doděláme později
 
-      - name: Optional — check for installer zip (informational only)
+      - name: Optional — note absence of installer zip (informational)
+        run: ls pbp_full_install*.zip || echo "No installer zip in PR (expected)."
         continue-on-error: true
-        run: |
-          ls pbp_full_install*.zip || echo "No installer zip in PR (that’s fine)."
