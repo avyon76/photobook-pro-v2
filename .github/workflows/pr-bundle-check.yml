@@ -23,10 +23,8 @@ jobs:
           set -e
           missing=0
           check() { [ -e "$1" ] || { echo "::error file=$1::missing"; missing=1; }; }
-          # workflows
           check ".github/workflows/full-bundle-release.yml"
           check ".github/workflows/pr-bundle-check.yml"
-          # product/page content + pricing/shipping + brief
           for f in \
             content/products/prints.md \
             content/products/large-format.md \
