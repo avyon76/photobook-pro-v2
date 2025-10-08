@@ -1,0 +1,90 @@
+{
+  "id": "small-format",
+  "title": "Malý formát",
+  "groups": [
+    {
+      "id": "size",
+      "label": "Formát",
+      "options": [
+        {
+          "id": "85x55",
+          "label": "85×55 mm"
+        },
+        {
+          "id": "A6",
+          "label": "A6"
+        },
+        {
+          "id": "A5",
+          "label": "A5"
+        },
+        {
+          "id": "A4",
+          "label": "A4"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "paper",
+      "label": "Papír",
+      "options": [
+        {
+          "id": "silk170",
+          "label": "Silk 170 g"
+        },
+        {
+          "id": "mat200",
+          "label": "Mat 200 g"
+        },
+        {
+          "id": "offset120",
+          "label": "Offset 120 g"
+        }
+      ],
+      "required": true
+    },
+    {
+      "id": "lamination",
+      "label": "Laminace",
+      "options": [
+        {
+          "id": "none",
+          "label": "Bez laminace"
+        },
+        {
+          "id": "matt",
+          "label": "Mat"
+        },
+        {
+          "id": "gloss",
+          "label": "Lesk"
+        }
+      ],
+      "required": false
+    },
+    {
+      "id": "quantity",
+      "label": "Množství",
+      "options": [
+        {
+          "id": "100",
+          "label": "100 ks"
+        },
+        {
+          "id": "250",
+          "label": "250 ks"
+        },
+        {
+          "id": "500",
+          "label": "500 ks"
+        },
+        {
+          "id": "1000",
+          "label": "1000 ks"
+        }
+      ],
+      "required": true
+    }
+  ]
+}
